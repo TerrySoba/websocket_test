@@ -3,12 +3,10 @@
 #include <websocketpp/server.hpp>
 
 #include <iostream>
+#include <thread>
+#include <sstream>
 
 typedef websocketpp::server<websocketpp::config::asio> server;
-
-using websocketpp::lib::placeholders::_1;
-using websocketpp::lib::placeholders::_2;
-using websocketpp::lib::bind;
 
 // pull out the type of messages sent by our config
 typedef server::message_ptr message_ptr;
@@ -47,7 +45,35 @@ int main() {
         echo_server.init_asio();
 
         // Register our message handler
-        echo_server.set_message_handler(bind(&on_message,&echo_server,::_1,::_2));
+        // echo_server.set_message_handler(bind(&on_message,&echo_server,::_1,::_2));
+        echo_server.set_message_handler([&](auto hdl, auto msg)
+        {
+            on_message(&echo_server, hdl, msg);
+        });
+
+        std::thread commThread;
+
+        echo_server.set_open_handler([&](auto hdl)
+        {
+            if (!commThread.joinable())
+            {
+                commThread = std::thread([&, hdl]{
+                    int i = 0;
+                    for (;;)
+                    {
+                        sleep(5);
+                        std::stringstream message;
+                        message << "Hallo, Welt! " << i++;
+                        echo_server.send(hdl, message.str(), websocketpp::frame::opcode::text);
+                    }
+                });
+            }
+        });
+
+        echo_server.set_close_handler([&](auto hdl)
+        {
+            echo_server.stop_listening();
+        });
 
         // Listen on port 9002
         echo_server.listen(9002);
@@ -57,6 +83,9 @@ int main() {
 
         // Start the ASIO io_service run loop
         echo_server.run();
+
+        commThread.join();
+
     } catch (websocketpp::exception const & e) {
         std::cout << e.what() << std::endl;
     } catch (...) {

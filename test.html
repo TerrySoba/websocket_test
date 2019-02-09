@@ -2,8 +2,58 @@
 
 <html>
    <head>
-      
+      <script src="jquery-3.3.1.min.js"></script>
       <script type = "text/javascript">
+
+         function prependMessage(message)
+         {
+            if (message.length > 0)
+            {
+               $("#messages").prepend('<li>' + message + '</li>');
+            }
+            
+            var listItems = $("#messages li");
+            listItems.each(function(idx, li) {
+               var product = $(li);
+
+               if (idx > 10) product.remove();
+
+               // and the rest of your code
+            });
+         }
+
+         $(document).ready(function(){
+
+            var ws = new WebSocket("ws://localhost:9002");
+
+            ws.onopen = function() {
+               $("#server_status").text('connected');
+            };
+
+            ws.onclose = function() {
+               $("#server_status").text('disconnected');
+            };
+
+            ws.onmessage = function (evt) { 
+               var received_msg = evt.data;
+               prependMessage(received_msg);
+            };
+
+            // jQuery methods go here...
+            $( "#send_button" ).click(function() {
+               var message = $("#message_input").val();
+               $("#message_input").val('');
+
+               // prependMessage(message);
+
+               if (message.length > 0)
+                  ws.send(message);
+               
+               
+
+            });
+         });
+
          function WebSocketTest() {
             
             if ("WebSocket" in window) {
@@ -36,13 +86,26 @@
             }
          }
       </script>
-		
    </head>
    
    <body>
+      <h1>Simple Chat Thingy</h1>
+      <p>Server status: <span id="server_status">connecting</span></p>
+      <form onsubmit="return false;">
+         <input id="message_input" type="text">
+         <input id="send_button" type="button" value="Send">
+      </form>
+
+      <ul id="messages">
+         <li>Welcome to the chat!</li>
+      </ul>
+   
       <div id = "sse">
-         <a href = "javascript:WebSocketTest()">Run WebSocket</a>
+         <!-- <a href = "javascript:WebSocketTest()">Run WebSocket</a> -->
+
       </div>
       
+      
+
    </body>
 </html>

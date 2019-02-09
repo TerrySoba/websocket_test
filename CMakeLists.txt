@@ -11,7 +11,8 @@ add_executable(websocket_test
     echo_server.cpp)
 
 target_link_libraries(websocket_test
-    ${Boost_LIBRARIES})
+    ${Boost_LIBRARIES}
+    -pthread)
 
 target_include_directories(websocket_test
     PRIVATE ${CMAKE_SOURCE_DIR}/3rd_party/json
