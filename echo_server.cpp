@@ -2,6 +2,10 @@
 
 #include <websocketpp/server.hpp>
 
+#include <nlohmann/json.hpp>
+
+#include <cstdlib>
+
 #include <iostream>
 #include <thread>
 #include <sstream>
@@ -10,6 +14,8 @@ typedef websocketpp::server<websocketpp::config::asio> server;
 
 // pull out the type of messages sent by our config
 typedef server::message_ptr message_ptr;
+
+using json = nlohmann::json;
 
 // Define a callback to handle incoming messages
 void on_message(server* s, websocketpp::connection_hdl hdl, message_ptr msg) {
@@ -24,11 +30,24 @@ void on_message(server* s, websocketpp::connection_hdl hdl, message_ptr msg) {
         return;
     }
 
-    try {
-        s->send(hdl, msg->get_payload(), msg->get_opcode());
-    } catch (websocketpp::exception const & e) {
-        std::cout << "Echo failed because: "
-                  << "(" << e.what() << ")" << std::endl;
+    // parse json message
+    auto request = json::parse(msg->get_payload());
+
+    if (request.at("type") == "chat_message")
+    {
+        json reply;
+
+        reply["type"] = "chat_message";
+        reply["timestamp"] = time(nullptr);
+        reply["payload"] = request.at("payload");
+
+        try {
+            // s->send(hdl, msg->get_payload(), msg->get_opcode());
+            s->send(hdl, reply.dump(), msg->get_opcode());
+        } catch (websocketpp::exception const & e) {
+            std::cout << "Echo failed because: "
+                    << "(" << e.what() << ")" << std::endl;
+        }
     }
 }
 
@@ -53,22 +72,22 @@ int main() {
 
         std::thread commThread;
 
-        echo_server.set_open_handler([&](auto hdl)
-        {
-            if (!commThread.joinable())
-            {
-                commThread = std::thread([&, hdl]{
-                    int i = 0;
-                    for (;;)
-                    {
-                        sleep(5);
-                        std::stringstream message;
-                        message << "Hallo, Welt! " << i++;
-                        echo_server.send(hdl, message.str(), websocketpp::frame::opcode::text);
-                    }
-                });
-            }
-        });
+        // echo_server.set_open_handler([&](auto hdl)
+        // {
+        //     if (!commThread.joinable())
+        //     {
+        //         commThread = std::thread([&, hdl]{
+        //             int i = 0;
+        //             for (;;)
+        //             {
+        //                 sleep(5);
+        //                 std::stringstream message;
+        //                 message << "Hallo, Welt! " << i++;
+        //                 echo_server.send(hdl, message.str(), websocketpp::frame::opcode::text);
+        //             }
+        //         });
+        //     }
+        // });
 
         echo_server.set_close_handler([&](auto hdl)
         {
@@ -88,7 +107,9 @@ int main() {
 
     } catch (websocketpp::exception const & e) {
         std::cout << e.what() << std::endl;
+    } catch (std::exception& ex) {
+        std::cout << "std::exception:" << ex.what() << std::endl;
     } catch (...) {
-        std::cout << "other exception" << std::endl;
+        std::cout << "unknown exception" << std::endl;
     }
 }

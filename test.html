@@ -35,8 +35,12 @@
             };
 
             ws.onmessage = function (evt) { 
-               var received_msg = evt.data;
-               prependMessage(received_msg);
+               // var received_msg = evt.data;
+
+               var message = JSON.parse(evt.data);
+               var date = new Date(message.timestamp*1000);
+               var dateString = date.toLocaleTimeString();
+               prependMessage(dateString + '> ' +  message.payload);
             };
 
             // jQuery methods go here...
@@ -47,9 +51,12 @@
                // prependMessage(message);
 
                if (message.length > 0)
-                  ws.send(message);
-               
-               
+               {
+                  var jsonMessage = new Object();
+                  jsonMessage.type = "chat_message";
+                  jsonMessage.payload = message;
+                  ws.send(JSON.stringify(jsonMessage));
+               }
 
             });
          });
